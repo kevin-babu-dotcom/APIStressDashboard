@@ -98,8 +98,8 @@ export default function HomePage() {
                 <div><p className="text-sm text-gray-400">Memory Usage</p><p className="text-2xl font-bold">{systemMetrics.memory}%</p></div>
             </div>
             <div className="bg-gray-800 p-4 rounded-lg flex justify-around text-center">
-                <div><p className="text-sm text-gray-400">Requests/Sec</p><p className="text-2xl font-bold">{chartData.length > 0 ? chartData[chartData.length - 1].requests.mean.toFixed(1) : '0.0'}</p></div>
-                <div><p className="text-sm text-gray-400">Latency (p99)</p><p className="text-2xl font-bold">{chartData.length > 0 ? chartData[chartData.length - 1].latency.p99.toFixed(1) : '0.0'} ms</p></div>
+                <div><p className="text-sm text-gray-400">Requests/Sec</p><p className="text-2xl font-bold">{chartData[chartData.length - 1]?.requests?.mean?.toFixed(1) ?? '0.0'}</p></div>
+                <div><p className="text-sm text-gray-400">Latency (p99)</p><p className="text-2xl font-bold">{chartData[chartData.length - 1]?.latency?.p99?.toFixed(1) ?? '0.0'} ms</p></div>
             </div>
         </div>
         
