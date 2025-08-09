@@ -9,18 +9,18 @@ const ResultsSummary = ({ results, onExport }) => {
   }
 
   return (
-    <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+    <div className="bg-black p-6 rounded-lg shadow-lg">
       <h2 className="text-2xl font-semibold mb-4">Final Test Results</h2>
       <div className="flex space-x-4 mb-4">
         <button 
           onClick={() => onExport('json')} 
-          className="flex items-center px-4 py-2 bg-gray-600 rounded hover:bg-gray-700 transition-colors"
+          className="flex items-center px-4 py-2 bg-black rounded hover:bg-gray-700 transition-colors"
         >
           <Download className="mr-2" size={16}/> Export as JSON
         </button>
         <button 
           onClick={() => onExport('csv')} 
-          className="flex items-center px-4 py-2 bg-gray-600 rounded hover:bg-gray-700 transition-colors"
+          className="flex items-center px-4 py-2 bg-black rounded hover:bg-gray-700 transition-colors"
         >
           <Download className="mr-2" size={16}/> Export as CSV
         </button>

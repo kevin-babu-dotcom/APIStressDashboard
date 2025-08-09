@@ -83,7 +83,7 @@ export default function HomePage() {
 
   // --- JSX for Rendering the Page ---
   return (
-    <main className="min-h-screen bg-gray-900 text-white p-4 sm:p-8 font-sans">
+    <main className="min-h-screen bg-black text-white p-8 sm:p-8 font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
         <header>
           <h1 className="text-3xl sm:text-4xl font-bold text-white">Zero-Downtime API Stress Dashboard</h1>
@@ -92,18 +92,18 @@ export default function HomePage() {
 
         <ConfigForm onSubmit={handleStartTest} onStop={handleStopTest} isTesting={isTesting} />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-gray-800 p-4 rounded-lg flex justify-around text-center">
+        <div className="grid grid-cols-1 md:grid-cols-2   gap-6">
+            <div className="bg-black border-rose-50 border-2 p-8 rounded-lg flex justify-around text-center">
                 <div><p className="text-sm text-gray-400">CPU Usage</p><p className="text-2xl font-bold">{systemMetrics.cpu}%</p></div>
                 <div><p className="text-sm text-gray-400">Memory Usage</p><p className="text-2xl font-bold">{systemMetrics.memory}%</p></div>
             </div>
-            <div className="bg-gray-800 p-4 rounded-lg flex justify-around text-center">
+            <div className="bg-black border-rose-50 border-2 p-8 rounded-lg flex justify-around text-center">
                 <div><p className="text-sm text-gray-400">Requests/Sec</p><p className="text-2xl font-bold">{chartData[chartData.length - 1]?.requests?.mean?.toFixed(1) ?? '0.0'}</p></div>
                 <div><p className="text-sm text-gray-400">Latency (p99)</p><p className="text-2xl font-bold">{chartData[chartData.length - 1]?.latency?.p99?.toFixed(1) ?? '0.0'} ms</p></div>
             </div>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 ">
           <MetricsChart data={chartData} yKey="requests.mean" name="Requests per Second" color="#3b82f6" unit="/s" />
           <MetricsChart data={chartData} yKey="latency.p99" name="p99 Latency (ms)" color="#10b981" unit="ms" />
         </div>
