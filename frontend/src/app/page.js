@@ -87,7 +87,7 @@ export default function HomePage() {
       <div className="max-w-7xl mx-auto space-y-8">
         <header>
           <h1 className="text-3xl sm:text-4xl font-bold text-white">Zero-Downtime API Stress Dashboard</h1>
-          <p className="text-gray-400 mt-2">Simulate load and monitor your API's performance in real-time.</p>
+          <p className="text-gray-400 mt-2">Simulate load and monitor your API&apos;s performance in real-time.</p>
         </header>
 
         <ConfigForm onSubmit={handleStartTest} onStop={handleStopTest} isTesting={isTesting} />
