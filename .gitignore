@@ -4,7 +4,6 @@
 /frontend/node_modules
 
 # Next.js build output
-/frontend/.next/
 
 # Environment variables
 .env
