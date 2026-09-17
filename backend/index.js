@@ -7,6 +7,7 @@ const si = require('systeminformation');
 const { Parser } = require('json2csv');
 const stressTestService = require('./services/stressTest');
 const appEmitter = require('./utils/eventEmitter'); // Import our "radio station"
+const db = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -107,6 +108,68 @@ app.get('/export', (req, res) => {
   res.header('Content-Type', 'application/json');
   res.attachment('stress-test-results.json');
   return res.json(lastTestResult);
+});
+
+// This is the endpoint for listing targets with their latest run stats
+app.get('/targets', (req, res) => {
+  res.json(db.getTargetsWithLatestRun());
+});
+
+// This is the endpoint for a single target's full run history
+app.get('/targets/:id/runs', (req, res) => {
+  const targetId = parseInt(req.params.id, 10);
+  if (Number.isNaN(targetId)) {
+    return res.status(400).json({ error: 'Invalid target id.' });
+  }
+  res.json(db.getRunsForTarget(targetId));
+});
+
+// Least-squares slope of y over x (standard linear regression formula)
+function linearRegressionSlope(xs, ys) {
+  const n = xs.length;
+  const sumX = xs.reduce((a, b) => a + b, 0);
+  const sumY = ys.reduce((a, b) => a + b, 0);
+  const sumXY = xs.reduce((acc, x, i) => acc + x * ys[i], 0);
+  const sumXX = xs.reduce((acc, x) => acc + x * x, 0);
+  const denom = n * sumXX - sumX * sumX;
+  if (denom === 0) return 0;
+  return (n * sumXY - sumX * sumY) / denom;
+}
+
+// This is the endpoint for a target's p99 trend over its run history
+app.get('/analysis/trend/:targetId', (req, res) => {
+  const targetId = parseInt(req.params.targetId, 10);
+  if (Number.isNaN(targetId)) {
+    return res.status(400).json({ error: 'Invalid target id.' });
+  }
+
+  const runs = db.getRunsForTarget(targetId);
+  if (runs.length < 2) {
+    return res.json({ targetId, slope: 0, label: 'stable', reason: 'insufficient_data', runCount: runs.length });
+  }
+
+  // x = run sequence index (0, 1, 2, ...), not raw timestamp — keeps the
+  // slope's units (latency change per run) meaningful regardless of how
+  // far apart runs happened in real time.
+  const xs = runs.map((_, i) => i);
+  const ys = runs.map((r) => r.p99);
+  const slope = linearRegressionSlope(xs, ys);
+  const meanP99 = ys.reduce((a, b) => a + b, 0) / ys.length;
+  const relativeSlope = meanP99 !== 0 ? slope / meanP99 : 0;
+
+  // Threshold: slope magnitude as a fraction of mean p99 per run-step.
+  // Anything under 5% per run is noise-level and called "stable".
+  const THRESHOLD = 0.05;
+  let label = 'stable';
+  if (relativeSlope > THRESHOLD) label = 'degrading';
+  else if (relativeSlope < -THRESHOLD) label = 'improving';
+
+  res.json({ targetId, slope, meanP99, relativeSlope, label, runCount: runs.length });
+});
+
+// This is the endpoint for cross-target aggregate analysis
+app.get('/analysis/aggregate', (req, res) => {
+  res.json(db.getAggregate());
 });
 
 // --- Start the server ---

@@ -2,114 +2,87 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-// Import all three of your separate components
-import ConfigForm from './components/ConfigForm';
-import MetricsChart from './components/MetricsChart';
-import ResultsSummary from './components/ResultsSummary';
+import Link from 'next/link';
 
-export default function HomePage() {
-  // --- State Management ---
-  const [isTesting, setIsTesting] = useState(false);
-  const [chartData, setChartData] = useState([]);
-  const [systemMetrics, setSystemMetrics] = useState({ cpu: 0, memory: 0 });
-  const [finalResults, setFinalResults] = useState(null);
-  
+export default function OverviewPage() {
+  const [aggregate, setAggregate] = useState(null);
+  const [error, setError] = useState(null);
+
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-  // --- Side Effect for SSE Connection ---
   useEffect(() => {
-    const eventSource = new EventSource(`${API_URL}/metrics`);
-    console.log('Connecting to SSE...');
-    let time = 0;
-
-    eventSource.addEventListener('system:update', (event) => {
-      const data = JSON.parse(event.data);
-      setSystemMetrics(data);
-    });
-
-    eventSource.addEventListener('test:progress', (event) => {
-      const data = JSON.parse(event.data);
-      time += 1;
-      setChartData(prev => [...prev.slice(-20), { ...data, time }]);
-    });
-
-    eventSource.addEventListener('test:complete', (event) => {
-      const data = JSON.parse(event.data);
-      setFinalResults(data);
-      setIsTesting(false);
-      console.log('Test complete event received.');
-    });
-
-    eventSource.onerror = () => {
-      console.error("SSE connection error or closed by server.");
-      eventSource.close();
-    };
-
-    return () => {
-      console.log('Closing SSE connection.');
-      eventSource.close();
-    };
+    fetch(`${API_URL}/analysis/aggregate`)
+      .then((res) => res.json())
+      .then(setAggregate)
+      .catch(() => setError('Could not load analysis. Is the backend running?'));
   }, [API_URL]);
 
-  // --- Handler Functions (These were missing) ---
-  const handleStartTest = async (e) => {
-    e.preventDefault();
-    setChartData([]);
-    setFinalResults(null);
-    setIsTesting(true);
+  if (error) {
+    return <p className="text-red-400">{error}</p>;
+  }
 
-    const formData = new FormData(e.target);
-    const config = Object.fromEntries(formData.entries());
+  if (!aggregate) {
+    return <p className="text-gray-400">Loading analysis...</p>;
+  }
 
-    await fetch(`${API_URL}/stress`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'start', config }),
-    });
-  };
+  const { worst, averageErrorRate, ranked } = aggregate;
 
-  const handleStopTest = async () => {
-    await fetch(`${API_URL}/stress`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'stop' }),
-    });
-    setIsTesting(false);
-  };
-  
-  const handleExport = (format) => {
-    window.open(`${API_URL}/export?format=${format}`, '_blank');
-  };
-
-  // --- JSX for Rendering the Page ---
-  return (
-    <main className="min-h-screen bg-black text-white p-8 sm:p-8 font-sans">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <header>
-          <h1 className="text-3xl sm:text-4xl font-bold text-white">Zero-Downtime API Stress Dashboard</h1>
-          <p className="text-gray-400 mt-2">Simulate load and monitor your API&apos;s performance in real-time.</p>
-        </header>
-
-        <ConfigForm onSubmit={handleStartTest} onStop={handleStopTest} isTesting={isTesting} />
-
-        <div className="grid grid-cols-1 md:grid-cols-2   gap-6">
-            <div className="bg-black border-rose-50 border-2 p-8 rounded-lg flex justify-around text-center">
-                <div><p className="text-sm text-gray-400">CPU Usage</p><p className="text-2xl font-bold">{systemMetrics.cpu}%</p></div>
-                <div><p className="text-sm text-gray-400">Memory Usage</p><p className="text-2xl font-bold">{systemMetrics.memory}%</p></div>
-            </div>
-            <div className="bg-black border-rose-50 border-2 p-8 rounded-lg flex justify-around text-center">
-                <div><p className="text-sm text-gray-400">Requests/Sec</p><p className="text-2xl font-bold">{chartData[chartData.length - 1]?.requests?.mean?.toFixed(1) ?? '0.0'}</p></div>
-                <div><p className="text-sm text-gray-400">Latency (p99)</p><p className="text-2xl font-bold">{chartData[chartData.length - 1]?.latency?.p99?.toFixed(1) ?? '0.0'} ms</p></div>
-            </div>
-        </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 ">
-          <MetricsChart data={chartData} yKey="requests.mean" name="Requests per Second" color="#3b82f6" unit="/s" />
-          <MetricsChart data={chartData} yKey="latency.p99" name="p99 Latency (ms)" color="#10b981" unit="ms" />
-        </div>
-
-        <ResultsSummary results={finalResults} onExport={handleExport} />
+  if (ranked.length === 0) {
+    return (
+      <div className="bg-black border-2 border-white p-8 rounded-lg text-center">
+        <p className="text-gray-400">No test runs yet. Head to the Stress Test tab to run one.</p>
       </div>
-    </main>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-black border-rose-50 border-2 p-8 rounded-lg">
+          <p className="text-sm text-gray-400">Worst p99 Latency</p>
+          {worst ? (
+            <>
+              <p className="text-2xl font-bold">{worst.p99?.toFixed(2)} ms</p>
+              <p className="text-gray-400 mt-1">{worst.label || worst.url}</p>
+              <Link href={`/targets/${worst.target_id}`} className="text-blue-400 hover:underline text-sm">
+                View target &rarr;
+              </Link>
+            </>
+          ) : (
+            <p className="text-2xl font-bold">N/A</p>
+          )}
+        </div>
+        <div className="bg-black border-rose-50 border-2 p-8 rounded-lg">
+          <p className="text-sm text-gray-400">Average Error Rate (all runs)</p>
+          <p className="text-2xl font-bold">{averageErrorRate != null ? `${averageErrorRate.toFixed(2)}%` : 'N/A'}</p>
+        </div>
+      </div>
+
+      <div className="bg-black border-2 border-white p-6 rounded-lg">
+        <h2 className="text-xl font-semibold mb-4">Targets Ranked by Average p99 Latency</h2>
+        <table className="w-full text-left">
+          <thead>
+            <tr className="border-b border-gray-600 text-gray-400 text-sm">
+              <th className="py-2 pr-4">Target</th>
+              <th className="py-2 pr-4">Avg p99 (ms)</th>
+              <th className="py-2 pr-4">Runs</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ranked.map((t) => (
+              <tr key={t.target_id} className="border-b border-gray-800 hover:bg-gray-900">
+                <td className="py-2 pr-4">
+                  <Link href={`/targets/${t.target_id}`} className="text-blue-400 hover:underline">
+                    {t.label || t.url}
+                  </Link>
+                </td>
+                <td className="py-2 pr-4">{t.avg_p99?.toFixed(2)}</td>
+                <td className="py-2 pr-4">{t.run_count}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }

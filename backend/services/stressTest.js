@@ -1,7 +1,8 @@
 // backend/services/stressTest.js
 
 const autocannon = require('autocannon');
-const appEmitter = require('../utils/eventEmitter'); 
+const appEmitter = require('../utils/eventEmitter');
+const db = require('../db');
 
 let instance;
 
@@ -13,7 +14,7 @@ function percentile(sortedArr, p) {
 
 // This function starts the test
 function start(config) {
-    const { url, connections, duration } = config;
+    const { url, connections, duration, label } = config;
 
     instance = autocannon({
         url,
@@ -22,6 +23,7 @@ function start(config) {
     });
 
     let latencySamples = [];
+    let allLatencySamples = [];
 
     // autocannon's 'tick' event only carries { counter, bytes } — no
     // requests/latency stats (those exist only on the final 'done' result).
@@ -30,6 +32,7 @@ function start(config) {
     // p99 computed from per-request response times collected via 'response'.
     instance.on('response', (client, statusCode, resBytes, responseTime) => {
         latencySamples.push(responseTime);
+        allLatencySamples.push(responseTime);
     });
 
     instance.on('tick', (data) => {
@@ -43,7 +46,37 @@ function start(config) {
 
     instance.on('done', (result) => {
         console.log('Test completed!');
-        appEmitter.emit('test:complete', result);
+
+        const sorted = allLatencySamples.slice().sort((a, b) => a - b);
+        const p50 = percentile(sorted, 50);
+        const p90 = percentile(sorted, 90);
+        const p95 = percentile(sorted, 95);
+        const p99 = percentile(sorted, 99);
+
+        const totalRequests = result.requests?.total ?? result.requests?.sent ?? sorted.length;
+        const errorCount = (result.errors || 0) + (result.timeouts || 0) + (result.non2xx || 0);
+        const errorRate = totalRequests > 0 ? (errorCount / totalRequests) * 100 : 0;
+        const requestsPerSec = result.requests?.average ?? result.requests?.mean ?? 0;
+
+        const target = db.getOrCreateTarget(url, label || null);
+        const run = db.insertRun({
+            target_id: target.id,
+            concurrency: parseInt(connections, 10),
+            requests_per_sec: requestsPerSec,
+            error_rate: errorRate,
+            p50,
+            p90,
+            p95,
+            p99,
+            stopped_reason: null,
+        });
+
+        appEmitter.emit('test:complete', {
+            ...result,
+            computed: { p50, p90, p95, p99, errorRate },
+            run,
+            target,
+        });
     });
 
     autocannon.track(instance);

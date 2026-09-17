@@ -6,8 +6,9 @@ import { Play, Square } from 'lucide-react';
 const ConfigForm = ({ onSubmit, onStop, isTesting }) => (
     <form onSubmit={onSubmit} className="bg-black border-rose-50 border-2 p-10 rounded-lg shadow-lg w-full">
         <h2 className="text-xl font-semibold mb-4">Test Configuration</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-5">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 py-5">
             <input name="url" type="url" placeholder="API URL to test (e.g., https://api.example.com)" required className="p-8 rounded bg-black border border-gray-600 text-white focus:ring-2 focus:white outline-none" />
+            <input name="label" type="text" placeholder="Label (optional friendly name)" className="p-2 rounded bg-black border border-gray-600 text-white focus:ring-2 focus:ring-white outline-none"  />
             <input name="connections" type="number" placeholder="Concurrent Connections (e.g., 10)" required className="p-2 rounded bg-black border border-gray-600 text-white focus:ring-2 focus:ring-white outline-none"  />
             <input name="duration" type="number" placeholder="Duration (seconds) (e.g., 10)" required className="p-5 rounded bg-black border border-gray-600 text-white focus:ring-2 focus:ring-white outline-none"  />
         </div>
